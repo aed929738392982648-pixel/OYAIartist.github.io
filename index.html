@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OU YUAN | Digital Media Artist</title>
+    
+    <!-- 核心依赖：React 和 Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 样式库 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body { background-color: #050505; color: white; cursor: none; margin: 0; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        
+        .stroke-text { -webkit-text-stroke: 1px rgba(255,255,255,0.5); }
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spin-slow 8s linear infinite; }
+        .fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; transform: translateY(20px); }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.5s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // ==========================================
+        // 1. 内置图标组件 (防止外部库加载失败)
+        // ==========================================
+        const Icon = ({ children, className, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
+        );
+        const Icons = {
+            Globe: (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></Icon>,
+            X: (p) => <Icon {...p}><path d="M18 6 6 18"/><path d="m6 6 18 18"/></Icon>,
+            Maximize2: (p) => <Icon {...p}><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></Icon>,
+            Download: (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></Icon>,
+            Smartphone: (p) => <Icon {...p}><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></Icon>,
+            QrCode: (p) => <Icon {...p}><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></Icon>,
+            Lock: (p) => <Icon {...p}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></Icon>,
+            Zap: (p) => <Icon {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Icon>,
+            Film: (p) => <Icon {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="7" x2="7" y1="3" y2="21"/><line x1="17" x2="17" y1="3" y2="21"/><line x1="3" x2="21" y1="12" y2="12"/><line x1="3" x2="7" y1="7" y2="7"/><line x1="3" x2="7" y1="17" y2="17"/><line x1="17" x2="21" y1="17" y2="17"/><line x1="17" x2="21" y1="7" y2="7"/></Icon>,
+            Users: (p) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon>,
+            Award: (p) => <Icon {...p}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></Icon>,
+            ArrowRight: (p) => <Icon {...p}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></Icon>,
+            ArrowLeft: (p) => <Icon {...p}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></Icon>,
+            LayoutGrid: (p) => <Icon {...p}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></Icon>,
+            Cpu: (p) => <Icon {...p}><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></Icon>,
+            MessageSquare: (p) => <Icon {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></Icon>,
+            Send: (p) => <Icon {...p}><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></Icon>,
+            Bot: (p) => <Icon {...p}><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></Icon>,
+            Sparkles: (p) => <Icon {...p}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 5H5"/><path d="M19 19v-4"/><path d="M15 19h4"/></Icon>,
+            ScanLine: (p) => <Icon {...p}><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" x2="17" y1="12" y2="12"/></Icon>,
+            Mail: (p) => <Icon {...p}><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></Icon>,
+            Phone: (p) => <Icon {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></Icon>
+        };
+
+        // ==========================================
+        // 2. 数据层
+        // ==========================================
+        const digitalSacrificeImages = [
+            "https://i.postimg.cc/1fZGBy01/IMG-5340.jpg", "https://i.postimg.cc/KkjF3Kvj/IMG-5361.png", "https://i.postimg.cc/k6G9RVX6/IMG-5367.png", "https://i.postimg.cc/8j258bk0/IMG-5382.png", "https://i.postimg.cc/N53MhxGn/IMG-5390.png", "https://i.postimg.cc/fVYbM0Jt/lee180052-A-birds-eye-view-of-a-serene-dark-forest-surrounding-062188b2-2ef7-499e-95e4-6d83ea1b3679.png",
+            "https://i.postimg.cc/gwd2jkZN/lee180052-A-black-and-white-graphic-of-multiple-Buddha-heads-in-29f1728d-e982-471c-9c60-bfe8012b8e00.png", "https://i.postimg.cc/zL5GvXgF/lee180052-A-cinematic-shot-capturing-the-exact-moment-a-large-a-02b6c7d9-9f30-43d5-a3dd-4e08378a9bd6.png", "https://i.postimg.cc/HJHknsy0/lee180052-A-close-up-cinematic-shot-of-an-ancient-tarnished-tem-337f9332-7b53-4cfd-a42e-51f909891270.png", "https://i.postimg.cc/gwDkZFVD/lee180052-A-close-up-view-of-a-colossal-Buddha-statue-occupying-05b8156d-cbcf-4fe4-89e6-e0a0fd537404.png",
+            "https://i.postimg.cc/sQgfP6K5/lee180052-A-dark-digital-environment-featuring-a-ghostly-hologr-8f3c5842-134f-4b1f-b78a-12ee18f8c011.png", "https://i.postimg.cc/2bSjdcTh/lee180052-A-dark-expansive-rooftop-with-a-futuristic-red-tinted-d909ad77-5f17-4ff1-a719-dfefe01b6264.png", "https://i.postimg.cc/k6YJTQhs/lee180052-A-dark-futuristic-room-illuminated-by-a-dim-green-lig-10027497-fda8-4516-8593-e5d896222106.png", "https://i.postimg.cc/V0SYpJxc/lee180052-A-glowing-holographic-translucent-iridescent-figure-o-45ac645a-b90d-4645-ab00-23c0e58f9673.png", "https://i.postimg.cc/kDZM8ybp/lee180052-A-hyper-realistic-close-up-shot-of-Buddhas-eyes-deepl-6a8b972d-6f3c-44d7-95d2-61eb62adb02e.png",
+            "https://i.postimg.cc/9w4WKD60/lee180052-A-massive-overwhelming-full-moon-that-appears-almost-9e4f25cc-95f7-411f-ae65-ecd6469ed67a.png", "https://i.postimg.cc/CdtMD48L/lee180052-A-retrofuturistic-1990s-DVD-screengrab-capturing-a-su-e18613cb-1d9e-4efd-933c-b9d51fba0220.png", "https://i.postimg.cc/fJ9zv07j/lee180052-A-serene-and-majestic-Buddha-statue-sits-peacefully-i-7cd72e3e-f95f-4369-a478-f96f7f186f8f.png", "https://i.postimg.cc/4YRJ2NwP/lee180052-A-surreal-mist-shrouded-scene-depicting-an-enormous-s-b3e63ed2-65fc-4ca1-a47a-b74a76717ec8.png", "https://i.postimg.cc/9DPc65nj/lee180052-A-vast-dark-ocean-stretching-out-under-a-heavy-mist-f-34403fce-4b22-48cd-9455-f06ddeb86982.png",
+            "https://i.postimg.cc/zLJq5tsV/lee180052-An-ethereal-X-ray-image-of-a-multi-armed-Buddha-statu-4ea9b98d-006d-484e-887f-a4695165ba5e.png", "https://i.postimg.cc/kVfq5NC0/lee180052-DVD-screengrab-of-a-grid-pattern-on-a-blue-glowing-ne-6ef494f6-52de-4b18-9780-dfff51cbdf05.png", "https://i.postimg.cc/gwNm0ypQ/lee180052-Towering-turbulent-ocean-waves-crashing-with-immense-341f6861-50c2-4fc3-8236-3810c72c65a7.png", "https://i.postimg.cc/p9qRdQxt/MJ-20241022-172933.png"
+        ].sort();
+
+        const matrixChaosImages = [
+            "https://i.postimg.cc/nMg6FS8f/tu-pian1.png", "https://i.postimg.cc/473rdrNG/tu-pian2.png", "https://i.postimg.cc/7GQjTmfX/tu-pian3.png", "https://i.postimg.cc/bDF423sg/tu-pian4.png", "https://i.postimg.cc/dZkpRrym/tu-pian5.png", "https://i.postimg.cc/grnCPFTn/tu-pian6.png", "https://i.postimg.cc/XXpR0SzQ/tu-pian7.png", "https://i.postimg.cc/fkJGhnr6/tu-pian8.png", "https://i.postimg.cc/Dm89KkMp/tu-pian9.png", "https://i.postimg.cc/3WVP8SsL/tu-pian10.png"
+        ];
+
+        const quanLiImages = [
+            "https://i.postimg.cc/mkwmpXZX/wei-xin-tu-pian-20251120234523-10956-25.png", "https://i.postimg.cc/r0L7GKJR/(1).png", "https://i.postimg.cc/MM8g0vDB/(2).png", "https://i.postimg.cc/phY4sRGT/(3).png", "https://i.postimg.cc/62LgMtjR/(4).png", "https://i.postimg.cc/bDHWmpCC/(5).png", "https://i.postimg.cc/H8YKKRRt/(6).png", "https://i.postimg.cc/jnx99mmk/(7).png", "https://i.postimg.cc/Fkrqq8wt/(8).png", "https://i.postimg.cc/N2sVVSZs/(9).png", "https://i.postimg.cc/XX4TpBqC/(10).png", "https://i.postimg.cc/JtM9GH0Z/(11).png", "https://i.postimg.cc/ThfZp51F/(12).png", "https://i.postimg.cc/F1N27kz2/(13).png", "https://i.postimg.cc/G9K6Y3Tg/(14).png", "https://i.postimg.cc/yWj2963t/(15).png", "https://i.postimg.cc/hhsNx47g/(16).png", "https://i.postimg.cc/fJbpv4xL/(17).png", "https://i.postimg.cc/gn0QK9vj/(18).png", "https://i.postimg.cc/qz7SGf8J/(19).png", "https://i.postimg.cc/LnswVdzf/(20).png", "https://i.postimg.cc/9rfKB3GY/(21).png", "https://i.postimg.cc/jLjmhVzv/(22).png", "https://i.postimg.cc/vcSjqPzz/(23).png", "https://i.postimg.cc/rKYbnhJb/(24).png", "https://i.postimg.cc/TpHS7k08/(25).png", "https://i.postimg.cc/gxX7fvtb/(26).png", "https://i.postimg.cc/YvGPJ1DH/(27).png", "https://i.postimg.cc/3k4qPgfh/(28).png", "https://i.postimg.cc/DSJNtqpw/(29).png", "https://i.postimg.cc/jDp1KLBL/(30).png", "https://i.postimg.cc/SnBPqJHX/(31).png", "https://i.postimg.cc/qNPF0zWK/(32).png", "https://i.postimg.cc/XrRP3ptL/(33).png", "https://i.postimg.cc/Mc1FGz85/(34).png", "https://i.postimg.cc/jWyFjRrF/(35).png", "https://i.postimg.cc/kVWp57m3/(36).png", "https://i.postimg.cc/WD0H4svb/(37).png", "https://i.postimg.cc/TLGHLBdx/(38).png", "https://i.postimg.cc/njZwjNFs/(39).png", "https://i.postimg.cc/0MxHMhkK/(40).png", "https://i.postimg.cc/N9YP9Zsm/(41).png", "https://i.postimg.cc/CBY6B9hs/(42).png", "https://i.postimg.cc/9RpgG10B/(43).png", "https://i.postimg.cc/phZcDkrC/(44).png", "https://i.postimg.cc/gXDtv4jS/(45).png", "https://i.postimg.cc/JDqYbK09/(46).png", "https://i.postimg.cc/ftKqx5k4/(47).png", "https://i.postimg.cc/N2jJbTrw/(48).png", "https://i.postimg.cc/dZVHndTQ/(49).png", "https://i.postimg.cc/bDHWmpCC/(5).png", "https://i.postimg.cc/QKd4S5WM/(50).png", "https://i.postimg.cc/F1rB9tCg/(51).png", "https://i.postimg.cc/w3qG6K45/(52).png", "https://i.postimg.cc/14vYXWLS/(53).png", "https://i.postimg.cc/nM3wrd6V/(54).png", "https://i.postimg.cc/3WtbNLP0/(55).png", "https://i.postimg.cc/z3xPvd9K/(56).png", "https://i.postimg.cc/PPNVwWjC/(57).png", "https://i.postimg.cc/4mn296g6/(58).png", "https://i.postimg.cc/8jsX6RSK/(59).png", "https://i.postimg.cc/QHVYTQ3w/(60).png", "https://i.postimg.cc/56G7qX9V/(61).png", "https://i.postimg.cc/jL9gQDxB/(62).png", "https://i.postimg.cc/gxZMMGrn/(63).png", "https://i.postimg.cc/RWHPPvq0/(64).png", "https://i.postimg.cc/GBPXCzFc/(65).png", "https://i.postimg.cc/DmhKLYj0/(66).png", "https://i.postimg.cc/gnkFBLPY/(67).png", "https://i.postimg.cc/dLtPSZKL/(68).png", "https://i.postimg.cc/F7s5nkQH/(69).png", "https://i.postimg.cc/SJNFtYp7/(70).png", "https://i.postimg.cc/1fChxR9d/(71).png", "https://i.postimg.cc/w7f8Kx6G/(72).png", "https://i.postimg.cc/9r853XWK/(73).png", "https://i.postimg.cc/bZZXqXJB/(74).png", "https://i.postimg.cc/pmmNPNrv/(75).png", "https://i.postimg.cc/CRRywy5w/(76).png", "https://i.postimg.cc/VJJyzyvs/(77).png", "https://i.postimg.cc/87925yfF/(78).png", "https://i.postimg.cc/TKFzwk51/(79).png", "https://i.postimg.cc/rD3BmhR9/(80).png", "https://i.postimg.cc/R3tjncww/(81).png", "https://i.postimg.cc/f3d60xx4/(82).png", "https://i.postimg.cc/rd4vtS5B/(83).png", "https://i.postimg.cc/sBWtZp5q/(84).png", "https://i.postimg.cc/KkyC7RNb/(85).png"
+        ];
+
+        const diaodiaoleImages = [
+            "https://i.postimg.cc/jWTGPDc1/tu-pian22.png",
+            "https://i.postimg.cc/Z9m1pWjh/tu-pian17.png", "https://i.postimg.cc/CRk3RGGW/tu-pian18.png", "https://i.postimg.cc/ZWpGW8Ph/tu-pian19.png",
+            "https://i.postimg.cc/QBqvbjn6/tu-pian20.png", "https://i.postimg.cc/QBDR1FSW/tu-pian21.png"
+        ];
+
+        const rustyLakeImages = [
+            "https://i.postimg.cc/jLPcPt5Z/tu-pian23.png",
+            "https://i.postimg.cc/CZmm57Kt/tu-pian24.png", "https://i.postimg.cc/WqJn9P72/tu-pian25.png", "https://i.postimg.cc/t7LDsYXF/tu-pian26.png",
+            "https://i.postimg.cc/Jt9KsG1Z/tu-pian27.png", "https://i.postimg.cc/MXhtnvWM/tu-pian28.png"
+        ];
+
+        const content = {
+            en: {
+                nav: { work: "Selected Works", about: "About Me", contact: "Contact", back: "Back", home: "Home" },
+                hero: { role: "DIGITAL MEDIA ARTIST / CLASS OF 2027", titleMain: "REALITY", titleSub: "HALLUCINATION", desc: "Reconstructing narratives through the lens of neural networks.", action: "View Portfolio" },
+                about: {
+                    title: "Profile",
+                    role: "Digital Media Artist & Visual Researcher",
+                    intro: "Navigating the liminal space between algorithmic hallucination and reality. Specializing in the synthesis of AIGC and documentary filmmaking, utilizing generative AI to reconstruct visual narratives and explore the philosophy of the digital age.",
+                    skills: "Stable Diffusion, Midjourney, Premiere Pro, AE",
+                    awards: ["Lingnan AI Video Contest - 3rd Prize", "'Light & Shadow Dream' - Best VFX", "Tianjin Tech-Art Design - 2nd Prize"]
+                },
+                works: {
+                    title: "Selected Projects", viewMore: "View All Projects", viewLess: "Back to Highlights",
+                    confidentialTitle: "Confidential Projects", confidentialDesc: "Two AI-driven documentary projects in development. (Under NDA)", confidentialTags: ["AI Workflow", "Documentary", "R&D"],
+                    categories: { all: "All", ai_video: "AI Video", concept: "Concept Art", glitch: "Glitch Art" },
+                    items: [
+                        { id: 0, title: "The Logos of the Fist", category: "AI Video / Concept", desc: "2025 Greater Bay Area Foshan Kung Fu Film Festival Entry. A philosophical exploration of the universe's origin.", tags: ["Stable Diffusion", "Philosophy", "Martial Arts"], gallery: quanLiImages, qrCode: "https://i.postimg.cc/t4K03qXB/wei-xin-tu-pian-20251123031005-104-358.jpg", videoLink: "http://xhslink.com/o/3ESCMSvfK27", coreConcept: "The Universe projecting an embodiment of will...", highlights: ["Act I: Chaos", "Act II: Duality", "Act III: Five Phases", "Act IV: Oneness"] },
+                        { id: 1, title: "Digital Sacrifice", category: "AI Video", desc: "An early exploration into AI filmmaking. Bridging Lingnan culture with digital surrealism.", tags: ["Midjourney", "Early Work", "Aesthetic Study"], gallery: digitalSacrificeImages, qrCode: "https://i.postimg.cc/t4K03qXB/wei-xin-tu-pian-20251123031005-104-358.jpg", videoLink: "http://xhslink.com/o/3TrEncTxkVO" },
+                        { id: 2, title: "Matrix Chaos", category: "Glitch Art", desc: "A mockumentary project visualizing the 'Earth Matrix Malfunction'.", tags: ["Stable Diffusion", "Found Footage"], gallery: matrixChaosImages, coreConcept: "Earth Matrix Theory...", highlights: ["Paused Birds", "Texture Glitch", "Giant Foot", "Library Paradox"] },
+                        { id: 3, title: "Diaodiaole", category: "Concept Art / IP Design", desc: "Innovation design for Jiangmen Diaolou IP, reimagined as Lego structures.", tags: ["Product Design", "Lego Style", "Cultural Heritage"], gallery: diaodiaoleImages, coreConcept: "Deconstructing Tradition with Play...", highlights: ["Eat: Tea House", "Drink: Cafe", "Play: Park", "Learn: Library", "Buy: Market"], team: ["Ou Yuan", "Hu Xinyi", "Jiang Wenting", "Huang Jingyao", "Chen Rumo"], advisors: ["Li Wei", "Zhu Dingliang"] },
+                        { id: 4, title: "Origin of Rusty Lake", category: "Concept Art", desc: "Cinematic visualization of the game 'Rusty Lake'.", tags: ["Game Art", "Cinematography", "Dark"], gallery: rustyLakeImages, coreConcept: "Translating 2D game world to photorealistic 80s horror...", highlights: ["The Room", "Corrupted Soul", "Atmosphere"] }
+                    ]
+                }
+            },
+            cn: {
+                nav: { work: "精选作品", about: "关于我", contact: "联系", back: "返回", home: "首页" },
+                hero: { role: "数字媒体艺术家 / 2027届", titleMain: "现实", titleSub: "幻觉", desc: "以算法重构影像叙事，连接概念设计与技术实现的鸿沟。", action: "探索作品集" },
+                about: {
+                    title: "个人简介",
+                    role: "数字媒体艺术家 / 视觉研究者",
+                    intro: "深耕于人工智能生成内容（AIGC）与影像叙事的交叉领域。致力于探索算法幻觉与物理现实的边界，通过前沿技术重构纪录片语境，将计算美学转化为具有哲学思辨的视觉语言。",
+                    skills: "Stable Diffusion, Midjourney, Premiere Pro, AE",
+                    awards: ["岭南AI视频大赛 三等奖", "“光影之梦”校园数字艺术节 最佳视觉效果奖", "天津市大学生科技美术设计 二等奖"]
+                },
+                works: {
+                    title: "精选项目", viewMore: "查看更多作品", viewLess: "返回精选",
+                    confidentialTitle: "未公开/储备项目", confidentialDesc: "目前参与了两部全AI流程纪录片的制作（保密协议期）。", confidentialTags: ["全AI工作流", "纪录片", "前沿工具研究", "市场洞察"],
+                    categories: { all: "全部", ai_video: "AI视频", concept: "概念设计", glitch: "故障艺术" },
+                    items: [
+                        { id: 0, title: "拳理 (The Logos of the Fist)", category: "AI视频 / 概念设计", desc: "2025大湾区佛山功夫电影展参赛作品。一部探讨宇宙起源与东方武学哲理的AI艺术短片。", tags: ["Stable Diffusion", "东方哲学", "武侠", "宇宙恐怖"], gallery: quanLiImages, qrCode: "https://i.postimg.cc/t4K03qXB/wei-xin-tu-pian-20251123031005-104-358.jpg", videoLink: "http://xhslink.com/o/3ESCMSvfK27", coreConcept: "核心思想 (Logline): 宇宙为了从混沌中认知自我，投射出一个名为“行者”的意志化身...", highlights: ["第一幕：混沌 · 开辟", "第二幕：陰陽 · 劃分", "第三幕：五行 · 演化", "第四幕：合一 · 歸元"] },
+                        { id: 1, title: "数字祭祀", category: "AI视频", desc: "刚接触AI时的影片练习，具有强烈的个人风格。将岭南传统符号与数字超现实主义结合。", tags: ["Midjourney", "早期练习", "风格探索"], gallery: digitalSacrificeImages, qrCode: "https://i.postimg.cc/t4K03qXB/wei-xin-tu-pian-20251123031005-104-358.jpg", videoLink: "http://xhslink.com/o/3TrEncTxkVO" },
+                        { id: 2, title: "矩阵混乱", category: "故障艺术", desc: "《人工智能影像设计》课程项目。以“地球矩阵故障”为核心概念，采用伪纪录片手法。", tags: ["Stable Diffusion", "伪纪录片", "哲学"], gallery: matrixChaosImages, qrCode: "https://i.postimg.cc/t4K03qXB/wei-xin-tu-pian-20251123031005-104-358.jpg", coreConcept: "“地球矩阵故障”假说...", highlights: ["空中悬停的鸟群", "建筑贴图故障", "海上巨足", "图书馆诡事"] },
+                        { id: 3, title: "碉碉乐 (积木IP设计)", category: "概念设计 / IP开发", desc: "江门碉楼IP的创新设计，结合乐高积木风格，将严肃的非遗建筑转化为年轻化的潮流IP。", tags: ["产品设计", "乐高风格", "文化遗产", "AI辅助"], gallery: diaodiaoleImages, qrCode: "https://i.postimg.cc/t4K03qXB/wei-xin-tu-pian-20251123031005-104-358.jpg", coreConcept: "以“玩”致敬传统。将世界文化遗产“开平碉楼”的建筑特征与高饱和度、模块化的乐高积木美学结合...", highlights: ["一·吃（茶楼）", "二·喝（咖啡）", "三·乐（游乐）", "四·学（图书）", "五·购（商城）"], team: ["区元", "胡歆怡", "蒋雯婷", "黄静瑶", "陈如模"], advisors: ["李维", "朱鼎亮"] },
+                        { id: 4, title: "锈湖起源", category: "概念设计", desc: "游戏《锈湖》电影化视觉呈现。将2D资产转化为写实电影概念。", tags: ["游戏美术", "电影摄影", "氛围感"], gallery: rustyLakeImages, qrCode: "https://i.postimg.cc/t4K03qXB/wei-xin-tu-pian-20251123031005-104-358.jpg", coreConcept: "通过AI技术，探索如何将“锈湖”系列游戏中独特的诡异、荒诞与扁平画风，转化为具有80年代胶片质感...", highlights: ["场景重构", "黑影具象化", "氛围营造"] }
+                    ]
+                }
+            }
+        };
+
+        // --- Components ---
+
+        const GlitchText = ({ text, className }) => {
+          return (
+            <div className={`relative group inline-block ${className}`}>
+              <span className="relative z-10">{text}</span>
+              <span className="absolute top-0 left-0 -z-10 w-full h-full text-cyan-500 opacity-0 group-hover:opacity-70 group-hover:translate-x-[2px] transition-all duration-100" style={{ clipPath: 'inset(40% 0 61% 0)' }}>{text}</span>
+              <span className="absolute top-0 left-0 -z-10 w-full h-full text-red-500 opacity-0 group-hover:opacity-70 group-hover:-translate-x-[2px] transition-all duration-100" style={{ clipPath: 'inset(10% 0 30% 0)' }}>{text}</span>
+            </div>
+          );
+        };
+
+        const Starfield = () => {
+          const canvasRef = useRef(null);
+          useEffect(() => {
+            const canvas = canvasRef.current;
+            const ctx = canvas.getContext('2d');
+            let animationFrameId;
+            const resizeCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            const particles = [];
+            const particleCount = 150; 
+            for (let i = 0; i < particleCount; i++) {
+              particles.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2, speedX: (Math.random() - 0.5) * 0.2, speedY: (Math.random() - 0.5) * 0.2, opacity: Math.random() * 0.5 + 0.1 });
+            }
+            const draw = () => {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              particles.forEach(p => {
+                p.x += p.speedX; p.y += p.speedY;
+                if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
+                if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+              });
+              animationFrameId = requestAnimationFrame(draw);
+            };
+            draw();
+            return () => { window.removeEventListener('resize', resizeCanvas); cancelAnimationFrame(animationFrameId); };
+          }, []);
+          return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0 opacity-60" />;
+        };
+
+        const CustomCursor = () => {
+            const cursorRef = useRef(null);
+            const followerRef = useRef(null);
+            useEffect(() => {
+                const moveCursor = (e) => {
+                    if (cursorRef.current) cursorRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
+                    if (followerRef.current) followerRef.current.animate({ transform: `translate3d(${e.clientX}px, ${e.clientY}px, 0)` }, { duration: 500, fill: "forwards" });
+                };
+                window.addEventListener('mousemove', moveCursor);
+                return () => window.removeEventListener('mousemove', moveCursor);
+            }, []);
+            return (
+                <div style={{pointerEvents: 'none'}}>
+                    <div ref={cursorRef} className="fixed top-0 left-0 w-2 h-2 bg-white rounded-full pointer-events-none z-[9999] -translate-x-1/2 -translate-y-1/2 mix-blend-difference"></div>
+                    <div ref={followerRef} className="fixed top-0 left-0 w-10 h-10 border border-white/30 rounded-full pointer-events-none z-[9998] transition-opacity duration-300 -translate-x-1/2 -translate-y-1/2"></div>
+                </div>
+            );
+        };
+
+        const ConfidentialCard = ({ t }) => {
+            const title = t?.confidentialTitle || "Confidential Projects";
+            const desc = t?.confidentialDesc || "Projects under NDA";
+            const tags = t?.confidentialTags || ["AI", "NDA"];
+            return (
+                <div className="group relative h-[450px] w-full overflow-hidden rounded-2xl bg-[#0a0a0a] border border-white/5 hover:border-white/20 transition-all duration-500 flex flex-col items-center justify-center text-center p-8">
+                    <div className="absolute inset-0 opacity-5" style={{backgroundImage: 'url(https://www.transparenttextures.com/patterns/cubes.png)'}}></div>
+                    <Icons.Lock className="w-12 h-12 text-white/20 mb-6 group-hover:text-cyan-500 transition-colors duration-500" />
+                    <h3 className="text-2xl font-bold text-white mb-3">{title}</h3>
+                    <p className="text-white/50 text-sm max-w-xs mb-6">{desc}</p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                        {tags.map((tag, idx) => (
+                            <span key={idx} className="text-[10px] font-mono text-cyan-500/70 border border-cyan-500/20 px-2 py-1 rounded bg-cyan-500/5">{tag}</span>
+                        ))}
+                    </div>
+                    <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                </div>
+            );
+        };
+
+        const ProjectCard = ({ item, onClick }) => (
+            <div onClick={() => onClick(item)} className="group relative h-[450px] w-full overflow-hidden rounded-2xl bg-[#111] border border-white/5 hover:border-white/30 transition-all duration-500 cursor-pointer">
+                <div className="absolute inset-0 bg-gray-900 animate-pulse group-hover:animate-none transition-all" />
+                <img src={item.gallery ? item.gallery[0] : `https://source.unsplash.com/random/800x1000/?abstract`} alt={item.title} className="absolute inset-0 h-full w-full object-cover opacity-70 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-50 saturate-0 group-hover:saturate-100" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-90 group-hover:opacity-80 transition-opacity duration-300" />
+                <div className="absolute bottom-0 left-0 w-full p-8 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                    <div className="flex items-center justify-between mb-4 opacity-100 transition-opacity duration-500">
+                        <span className="px-2 py-1 text-[10px] font-bold tracking-widest uppercase text-black bg-white">{item.category}</span>
+                        <Icons.Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <h3 className="text-3xl font-bold text-white mb-3 leading-none tracking-tighter group-hover:text-cyan-300 transition-colors">{item.title}</h3>
+                    <p className="text-white/60 text-sm line-clamp-2 group-hover:text-white/80 mb-6">{item.desc}</p>
+                    <div className="flex flex-wrap gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+                        {item.tags.map((tag, idx) => (
+                            <span key={idx} className="text-[10px] text-white/50 border border-white/10 px-2 py-1 rounded-full backdrop-blur-md">{tag}</span>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const SocialModal = ({ onClose, qrCode }) => (
+            <div className="fixed inset-0 z-[80] bg-black/90 flex items-center justify-center animate-fadeIn p-4" onClick={onClose}>
+                <div className="bg-[#1a1a1a] p-8 rounded-2xl max-w-sm w-full text-center relative border border-white/10" onClick={e => e.stopPropagation()}>
+                    <button onClick={onClose} className="absolute top-4 right-4 text-white/50 hover:text-white"><Icons.X className="w-5 h-5" /></button>
+                    <h3 className="text-xl font-bold text-white mb-2">Scan to Watch</h3>
+                    <p className="text-white/50 text-sm mb-6">Scan QR code to view on Xiaohongshu App</p>
+                    <div className="bg-white p-4 rounded-xl inline-block mb-6"><img src={qrCode} alt="QR Code" className="w-48 h-48 object-contain" /></div>
+                    <div className="flex items-center justify-center gap-2 text-xs text-white/30"><Icons.Smartphone className="w-4 h-4" /><span>Works best on Mobile</span></div>
+                </div>
+            </div>
+        );
+
+        const Lightbox = ({ image, onClose }) => (
+            <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center animate-fadeIn p-4 md:p-12">
+                <button onClick={onClose} className="absolute top-6 right-6 p-3 rounded-full bg-white/10 hover:bg-white hover:text-black text-white transition-all"><Icons.X className="w-6 h-6" /></button>
+                <img src={image} alt="Full View" className="max-w-full max-h-full object-contain shadow-2xl" />
+                <a href={image} download target="_blank" rel="noreferrer" className="absolute bottom-6 right-6 flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-bold hover:bg-cyan-400 transition-colors"><Icons.Download className="w-4 h-4" /> Download Original</a>
+            </div>
+        );
+
+        const ProjectDetail = ({ project, onClose }) => {
+            const [lightboxImage, setLightboxImage] = useState(null);
+            const [showQR, setShowQR] = useState(false);
+            const images = project.gallery || [];
+            
+            // Default profile URL
+            const defaultProfileUrl = "https://www.xiaohongshu.com/user/profile/609020b3000000000100b1ae";
+            const targetLink = project.videoLink || defaultProfileUrl;
+
+            return (
+                <div className="fixed inset-0 z-[60] bg-[#050505] overflow-y-auto animate-fadeIn flex flex-col">
+                    {lightboxImage && <Lightbox image={lightboxImage} onClose={() => setLightboxImage(null)} />}
+                    {showQR && project.qrCode && <SocialModal onClose={() => setShowQR(false)} qrCode={project.qrCode} />}
+                    <button onClick={onClose} className="fixed top-6 right-6 z-[70] p-3 rounded-full bg-black/50 hover:bg-white hover:text-black text-white transition-all backdrop-blur-md border border-white/10"><Icons.X className="w-6 h-6" /></button>
+                    <div className="flex flex-col lg:flex-row min-h-screen">
+                        <div className="lg:w-1/3 p-8 lg:p-12 lg:sticky lg:top-0 lg:h-screen overflow-y-auto border-r border-white/10 bg-[#0a0a0a]">
+                            <div className="mt-12 space-y-8">
+                                <div><span className="inline-block px-3 py-1 mb-4 text-xs font-mono border border-cyan-500/30 text-cyan-400 rounded-full bg-cyan-900/10">{project.category}</span><h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 text-white">{project.title}</h1><p className="text-lg text-white/70 leading-relaxed">{project.desc}</p></div>
+                                
+                                {project.qrCode && (
+                                    <div className="flex gap-3">
+                                        <a href={targetLink} target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center gap-3 py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-red-500/20 cursor-pointer">
+                                            <Icons.Smartphone className="w-5 h-5" />
+                                            Watch on Xiaohongshu
+                                        </a>
+                                        <button onClick={() => setShowQR(true)} className="px-4 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-white border border-white/10" title="Show QR Code">
+                                            <Icons.QrCode className="w-6 h-6" />
+                                        </button>
+                                    </div>
+                                )}
+
+                                {project.coreConcept && <div className="p-6 rounded-xl bg-gradient-to-br from-purple-900/20 to-black border border-purple-500/20"><h4 className="text-xs font-mono text-purple-300 mb-3 uppercase tracking-widest flex items-center gap-2"><Icons.Zap className="w-3 h-3" /> Core Concept</h4><p className="text-sm text-white/80 leading-relaxed font-light italic">"{project.coreConcept}"</p></div>}
+                                {project.highlights && <div><h4 className="text-xs font-mono text-white/40 mb-4 uppercase tracking-widest flex items-center gap-2"><Icons.Film className="w-3 h-3" /> Highlights</h4><ul className="space-y-4">{project.highlights.map((highlight, i) => <li key={i} className="text-sm text-white/60 pl-4 border-l border-white/10 hover:border-cyan-500 hover:text-white transition-colors">{highlight}</li>)}</ul></div>}
+                                {(project.team || project.advisors) && <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-4">{project.team && <div><h4 className="text-xs font-mono text-white/40 mb-2 uppercase tracking-widest flex items-center gap-2"><Icons.Users className="w-3 h-3" /> Team</h4><div className="flex flex-wrap gap-2">{project.team.map((member, i) => <span key={i} className="text-sm font-medium text-white bg-black/40 px-3 py-1 rounded-full border border-white/10">{member}</span>)}</div></div>}{project.advisors && <div><h4 className="text-xs font-mono text-white/40 mb-2 uppercase tracking-widest flex items-center gap-2"><Icons.Award className="w-3 h-3" /> Advisors</h4><div className="flex flex-wrap gap-2">{project.advisors.map((advisor, i) => <span key={i} className="text-sm font-medium text-white/70 px-2">{advisor}</span>)}</div></div>}</div>}
+                            </div>
+                        </div>
+                        <div className="lg:w-2/3 p-4 md:p-12 bg-black"><div className="columns-1 md:columns-2 gap-6 space-y-6">{images.map((img, i) => <div key={i} className="break-inside-avoid relative group overflow-hidden rounded-xl bg-gray-900 border border-white/5 cursor-zoom-in" onClick={() => setLightboxImage(img)}><img src={img} alt={`Project Visual ${i}`} className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700" loading="lazy" /><div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><span className="bg-black/50 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold text-white flex items-center gap-2"><Icons.Maximize2 className="w-3 h-3" /> View High-Res</span></div></div>)}</div></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const AIChatWidget = ({ aboutData }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [messages, setMessages] = useState([{ text: "你好！我是区元的AI数字分身。关于我的作品集或工作流，有什么想问的吗？(Powered by Gemini)", sender: 'bot' }]);
+            const [input, setInput] = useState('');
+            const [isTyping, setIsTyping] = useState(false);
+            const messagesEndRef = useRef(null);
+            useEffect(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), [messages]);
+            
+            const generateResponse = async (userInput) => {
+                setIsTyping(true);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const lowerInput = userInput.toLowerCase();
+                let response = "That's an interesting question! As an AI Digital Twin, I'm still learning. Feel free to ask about my projects!";
+                if (lowerInput.includes('contact') || lowerInput.includes('联系')) response = "You can reach me at 2561397369@qq.com or 147-7809-2386.";
+                else if (lowerInput.includes('skill') || lowerInput.includes('技能')) response = `My core stack includes ${aboutData.skills}. I specialize in AI workflows.`;
+                else if (lowerInput.includes('school') || lowerInput.includes('学校')) response = "I study Digital Media Art Design at GAFA.";
+                else if (lowerInput.includes('project') || lowerInput.includes('作品')) response = "Check out 'The Logos of the Fist' and 'Diaodiaole'!";
+                setMessages(prev => [...prev, { text: response, sender: 'bot' }]);
+                setIsTyping(false);
+            };
+            const handleSend = (e) => {
+                e.preventDefault();
+                if (!input.trim()) return;
+                setMessages(prev => [...prev, { text: input, sender: 'user' }]);
+                const currentInput = input;
+                setInput('');
+                generateResponse(currentInput);
+            };
+
+            return (
+                <div className="fixed bottom-8 right-8 z-[9000] flex flex-col items-end">
+                    {isOpen && <div className="mb-4 w-80 md:w-96 bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fadeIn flex flex-col h-[500px]"><div className="p-4 border-b border-white/10 bg-gradient-to-r from-cyan-900/20 to-transparent flex justify-between items-center"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 p-[1px]"><div className="w-full h-full rounded-full bg-black flex items-center justify-center"><Icons.Bot className="w-4 h-4 text-cyan-400" /></div></div><div><h3 className="text-sm font-bold text-white">Ou Yuan (AI)</h3><p className="text-[10px] text-cyan-400 flex items-center gap-1"><Icons.Sparkles className="w-2 h-2" /> Gemini 2.5 Pro</p></div></div><button onClick={() => setIsOpen(false)} className="text-white/50 hover:text-white"><Icons.X className="w-5 h-5" /></button></div><div className="flex-1 overflow-y-auto p-4 space-y-4">{messages.map((msg, idx) => <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[85%] p-3 rounded-xl text-sm leading-relaxed ${msg.sender === 'user' ? 'bg-cyan-600 text-white rounded-br-none' : 'bg-white/10 text-white/90 rounded-bl-none border border-white/5'}`}>{msg.text}</div></div>)}{isTyping && <div className="flex justify-start"><div className="bg-white/10 p-3 rounded-xl rounded-bl-none flex gap-1"><span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce"></span><span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce delay-100"></span><span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce delay-200"></span></div></div>}<div ref={messagesEndRef} /></div><form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-black/20"><div className="relative"><input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask me about my portfolio..." className="w-full bg-white/5 border border-white/10 rounded-full pl-4 pr-12 py-3 text-sm text-white focus:outline-none focus:border-cyan-500/50 transition-colors" /><button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-cyan-600 rounded-full text-white hover:bg-cyan-500 transition-colors disabled:opacity-50" disabled={!input.trim() || isTyping}><Icons.Send className="w-4 h-4" /></button></div></form></div>}
+                    <button onClick={() => setIsOpen(!isOpen)} className="w-14 h-14 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/20 flex items-center justify-center hover:scale-110 transition-transform duration-300 group relative">{isOpen ? <Icons.X className="w-6 h-6" /> : <Icons.MessageSquare className="w-6 h-6" />}{!isOpen && <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span></span>}</button>
+                </div>
+            );
+        };
+
+        const Portfolio = () => {
+            const [lang, setLang] = useState('cn');
+            const t = content[lang];
+            const [selectedProject, setSelectedProject] = useState(null);
+            
+            const toggleLang = () => setLang(prev => prev === 'en' ? 'cn' : 'en');
+
+            return (
+                <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-white selection:text-black relative overflow-x-hidden">
+                    
+                    {/* --- BACKGROUND EFFECTS --- */}
+                    <Starfield /> 
+                    <div className="fixed inset-0 pointer-events-none z-[5] opacity-[0.03] mix-blend-overlay" style={{backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`}}></div>
+                    <div className="fixed inset-0 pointer-events-none z-0"><div className="absolute top-[-20%] right-[-10%] w-[70vw] h-[70vw] bg-gradient-to-b from-purple-900/10 to-transparent rounded-full blur-[120px]"></div><div className="absolute bottom-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-gradient-to-t from-blue-900/10 to-transparent rounded-full blur-[120px]"></div></div>
+                    
+                    <CustomCursor />
+                    {selectedProject && <ProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />}
+                    <AIChatWidget aboutData={t.about} />
+
+                    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-6 md:px-12 flex justify-between items-center mix-blend-difference text-white">
+                        <div className="text-lg font-black tracking-tighter cursor-pointer hover:opacity-70 transition-opacity" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}>OU YUAN.</div>
+                        <div className="flex items-center gap-6"><button onClick={toggleLang} className="flex items-center gap-2 text-xs font-bold border border-white/30 px-3 py-1.5 rounded-full hover:bg-white hover:text-black transition-all"><Icons.Globe className="w-3 h-3" />{lang.toUpperCase()}</button></div>
+                    </nav>
+
+                    <section className="relative min-h-screen flex flex-col justify-center px-6 md:px-20 pt-20 z-10">
+                        <div className="pl-8 md:pl-16 max-w-7xl"><div className="flex items-center gap-4 mb-8"><div className="h-px w-12 bg-white/50"></div><span className="text-xs font-mono tracking-widest text-white/60">{t.hero.role}</span></div><div className="relative mb-12"><h1 className="text-[12vw] md:text-[9rem] font-black leading-[0.85] tracking-tighter text-white mix-blend-overlay select-none"><GlitchText text={t.hero.titleMain} /></h1><h1 className="text-[12vw] md:text-[9rem] font-black leading-[0.85] tracking-tighter text-transparent stroke-text ml-12 md:ml-32 opacity-30 hover:opacity-60 transition-opacity duration-500 select-none">{t.hero.titleSub}</h1></div><div className="flex flex-col md:flex-row items-start gap-8 md:gap-16 max-w-4xl"><p className="text-lg md:text-xl text-white/60 leading-relaxed md:w-2/3 font-light border-l-2 border-white/10 pl-6">{t.hero.desc}</p></div></div>
+                    </section>
+
+                    <section id="works" className="relative z-10 py-32 px-6 md:px-20">
+                        <div className="flex items-center justify-between mb-20"><h2 className="text-4xl md:text-6xl font-black tracking-tighter flex items-center gap-4"><Icons.LayoutGrid className="w-8 h-8 text-cyan-500 hidden md:block" />{t.works.title}</h2><span className="hidden md:block text-xs font-mono text-white/40 border border-white/20 px-3 py-1 rounded-full">SELECTED / 06</span></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {t.works.items.slice(0, 6).map(item => <ProjectCard key={item.id} item={item} onClick={setSelectedProject} />)}
+                            <ConfidentialCard t={t.works} />
+                        </div>
+                    </section>
+
+                    <section id="about" className="relative z-10 py-32 px-6 md:px-20 border-t border-white/5 bg-[#080808]">
+                        <div className="max-w-7xl mx-auto grid md:grid-cols-12 gap-12 items-center">
+                            <div className="md:col-span-5 relative group"><div className="relative w-full aspect-[3/4] rounded-sm overflow-hidden filter grayscale group-hover:grayscale-0 transition-all duration-700"><img src="https://i.postimg.cc/ZK9G5NHT/tu-pian.png" alt="Profile" className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" /></div></div>
+                            <div className="md:col-span-7 md:pl-12"><h2 className="text-3xl md:text-5xl font-black mb-2 text-white">{t.about.role}</h2><div className="h-1 w-24 bg-cyan-500 mb-8"></div><div className="space-y-10"><p className="text-xl md:text-2xl text-white/80 font-light leading-relaxed">{t.about.intro}</p><div className="grid grid-cols-1 sm:grid-cols-2 gap-8"><div><h4 className="text-xs font-mono text-white/40 mb-4 uppercase tracking-widest flex items-center gap-2"><Icons.Cpu className="w-3 h-3" /> Core Stack</h4><p className="text-base text-white/60 font-mono">{t.about.skills}</p></div><div><h4 className="text-xs font-mono text-white/40 mb-4 uppercase tracking-widest flex items-center gap-2"><Icons.Award className="w-3 h-3" /> Recognition</h4><ul className="space-y-2">{t.about.awards.map((award, i) => <li key={i} className="text-sm text-white/60 hover:text-white transition-colors">{award}</li>)}</ul></div></div>
+                            <div className="pt-4"><h4 className="text-xs font-mono text-white/40 mb-4 uppercase tracking-widest">Follow my Journey</h4><div className="flex items-center gap-6 bg-[#1a1a1a] p-4 rounded-xl border border-white/5 hover:border-red-500/30 transition-colors"><div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-white/10"><img src="https://i.postimg.cc/t4K03qXB/wei-xin-tu-pian-20251123031005-104-358.jpg" alt="Xiaohongshu QR" className="w-full h-full object-cover" /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-white font-bold">区元 OUYUAN</span><span className="text-[10px] bg-red-600 text-white px-1.5 rounded">小红书</span></div><p className="text-white/40 text-xs mb-2">分享AI艺术创作与幕后 / Sharing AI Art & BTS</p></div></div></div></div></div>
+                        </div>
+                    </section>
+                    <footer className="py-12 text-center border-t border-white/5 bg-black"><div className="text-white/20 text-xs font-mono uppercase tracking-[0.2em]">© 2025 OU YUAN. Digital Artifacts.</div></footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Portfolio />);
+    </script>
+</body>
+</html>
